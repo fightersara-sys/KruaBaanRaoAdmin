@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<title>Kitchen Panel - ออเดอร์ลูกค้า</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+  :root {
+    --accent:#ff6600;
+    --bg:#fffaf5;
+    --card-bg:#fff;
+    --text:#333;
+    --green:#28a745;
+    --blue:#0d6efd;
+    --red:#d9534f;
+    --soft-shadow:0 4px 14px rgba(0,0,0,0.08);
+  }
+
+  body { margin:0; font-family:"Prompt",sans-serif; background:var(--bg); color:var(--text); }
+
+  header { background:var(--accent); color:#fff; padding:14px 18px; display:flex; align-items:center; gap:12px; }
+
+  .title { font-weight:700; font-size:18px; }
+
+  /* Toggle wrapper */
+  .toggle-wrapper { margin-left:auto; display:flex; align-items:center; gap:10px; color:#fff; font-weight:500; font-size:14px; }
+
+  /* switch (visual) */
+  .switch { position: relative; display: inline-block; width: 46px; height: 24px; }
+  .switch input { display: none; }
+  .slider {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc; transition: .25s; border-radius: 24px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.15);
+  }
+  .slider:before {
+    content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px;
+    background-color: #fff; transition: .25s; border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .switch input:checked + .slider { background-color: var(--green); }
+  .switch input:checked + .slider:before { transform: translateX(22px); }
+
+  /* order list grid */
+  #orderList {
+    padding:18px;
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap:18px;
+  }
+
+  /* card */
+  .order-card {
+    background:var(--card-bg);
+    border-radius:16px;
+    padding:18px;
+    box-shadow:var(--soft-shadow);
+    position:relative;
+    overflow:hidden;
+    border-left:10px solid var(--accent);
+    transition: transform .1s;
+  }
+  .order-card:hover { transform: translateY(-2px); }
+
+  .order-header { font-size:19px; font-weight:700; margin-bottom:6px; }
+  .order-meta { font-size:13px; color:#666; margin-bottom:12px; }
+
+  .items { margin-bottom:14px; }
+  .item-line { font-size:15px; font-weight:500; margin-bottom:6px; }
+  .item-options { font-size:14px; margin-left:14px; color:#444; margin-top:2px; }
+  .note { color:var(--red); font-size:13px; margin-left:14px; margin-top:3px; }
+
+  .btn-group { display:flex; gap:10px; }
+  button { border:0; padding:8px 16px; border-radius:10px; cursor:pointer; font-weight:600; }
+  .start-btn { background:var(--green); color:#fff; }
+  .finish-btn { background:var(--blue); color:#fff; }
+  .cooking-btn { background:var(--red)!important; color:#fff!important; }
+  .done-check { font-size:26px; font-weight:700; color:var(--green); }
+
+  @media(max-width:420px){ #orderList { grid-template-columns: 1fr; } }
+
+  .logout-btn {
+  background:#ffffff22;
+  color:white;
+  border:1px solid white;
+  border-radius:10px;
+  padding:8px 14px;
+  font-size:14px;
+  cursor:pointer;
+  margin-left:14px;
+  transition:0.25s;
+}
+
+.logout-btn:hover {
+  background:white;
+  color:#ff6600;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">คิวออเดอร์สำหรับทำอาหาร</div>
+  <div class="toggle-wrapper">
+    <label>ซ่อนที่เสร็จสิ้น</label>
+    <label class="switch">
+      <input id="toggleHide" type="checkbox" />
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
+</header>
+
+<div id="orderList"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+  const supabaseUrl = "https://vxutzcrwqbnkcwxtdphy.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dXR6Y3J3cWJua2N3eHRkcGh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0NzkzNDQsImV4cCI6MjA3NTA1NTM0NH0.zwbcu_4eGAiRTaX7QBwgrJhWgCda58FW-boeJM-ZlKg";
+  const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+  async function logout() {
+  await supabaseClient.auth.signOut();
+  window.location.href = "index.html"; // ← หน้า Login ของคุณ
+}
+
+  /* ====== State & cache ====== */
+let hideCompleted = false;
+const orderListEl = document.getElementById("orderList");
+let lastRendered = {}; // { orderId: cacheKey }
+let existingOrderIds = new Set();
+let optionMap = {};
+
+
+/* ตั้งค่า toggle event */
+document.getElementById("toggleHide").addEventListener("change", (e) => {
+  hideCompleted = e.target.checked;
+  applyHideFilter();
+});
+
+/* ===============================
+   Helper: parse items (เหมือน order-status)
+================================ */
+function parseOrderItems(itemsRaw) {
+  if (typeof itemsRaw === "string") {
+    try {
+      itemsRaw = JSON.parse(itemsRaw);
+    } catch {
+      itemsRaw = [];
+    }
+  }
+
+  if (!Array.isArray(itemsRaw)) return [];
+
+  return itemsRaw.map(it => ({
+    qty: it.qty || 1,
+    food: it.food || "ไม่พบชื่อเมนู",
+    note: it.note || "",
+    options: Array.isArray(it.options) ? it.options : [] // ⬅️ สำคัญ
+  }));
+}
+
+function renderOrUpdateOrderCard(order) {
+  const id = order.id;
+  const cacheKey = JSON.stringify(order);
+
+  const cardId = `order-${id}`;
+  const existing = document.getElementById(cardId);
+
+  // ถ้าข้อมูลไม่เปลี่ยนเลย ให้ข้าม (เพื่อประสิทธิภาพ)
+  if (existing && lastRendered[id] === cacheKey) {
+    return; // no-op
+  }
+
+  // สร้าง HTML ของการ์ด
+  // parse items
+    const items = parseOrderItems(order.items, window.optionMap || {});
+
+  const itemsHTML = items.map(it => {
+  const name = it.food || "ไม่พบชื่อเมนู";
+  const qty  = it.qty || 1;
+
+  // ================== OPTIONS ==================
+  let optionLines = "";
+  let optionTotal = 0;
+
+  (it.options || []).forEach(opt => {
+  const optData = optionMap[opt.id];
+
+  if (!optData) {
+    optionLines += `<div style="color:#999;">- (ตัวเลือกถูกลบแล้ว)</div>`;
+    return;
+  }
+
+  optionLines += `<div>- ${optData.name}</div>`;
+});
+
+  if (!optionLines) {
+    optionLines = `<div>- ธรรมดา</div>`;
+  }
+
+  // ================== NOTE ==================
+  const noteHTML = it.note
+    ? `<div class="note">หมายเหตุ: ${it.note}</div>`
+    : "";
+
+  return `
+    <div class="item-line">${qty} × ${name}</div>
+    <div class="item-options">${optionLines}</div>
+    ${noteHTML}
+  `;
+}).join("");
+
+  // meta (format)
+  let meta;
+  try {
+    const dt = new Date(order.created_at);
+    meta = `${dt.toLocaleDateString()} • ${dt.toLocaleTimeString()} • บ้าน ${order.house || "-"}`;
+  } catch {
+    meta = `บ้าน ${order.house || "-"}`;
+  }
+
+  // buttons by status
+  let buttons = "";
+  if (order.status === "รับออเดอร์") {
+    buttons = `<button class="start-btn" onclick="startCooking(${id})">เริ่มทำอาหาร</button>`;
+  } else if (order.status === "กำลังทำอาหาร") {
+    buttons = `<button class="cooking-btn">กำลังทำอาหาร</button>
+               <button class="finish-btn" onclick="finishCooking(${id})">ทำเสร็จแล้ว</button>`;
+  } else {
+    buttons = `<span class="done-check">✔</span>`;
+  }
+
+  const cardHTML = `
+    <div id="${cardId}" class="order-card" data-status="${order.status}">
+      <div class="order-header">ออเดอร์ #${id}</div>
+      <div class="order-meta">${meta}</div>
+      <div class="items">${itemsHTML}</div>
+      <div class="btn-group">${buttons}</div>
+    </div>
+  `;
+
+  if (existing) {
+    // อัปเดตแทนการ replace whole element เพื่อเก็บ event listeners บางชนิดที่อาจต่อไว้
+    existing.outerHTML = cardHTML; // แทนที่ element เดิมด้วยใหม่
+  } else {
+    // สร้าง node จาก HTML string แล้ว append
+    const temp = document.createElement('div');
+    temp.innerHTML = cardHTML;
+    const newEl = temp.firstElementChild;
+    orderListEl.appendChild(newEl);
+  }
+
+  lastRendered[id] = cacheKey;
+  existingOrderIds.add(id);
+}
+
+/* ====== ลบการ์ดที่ไม่ได้อยู่ในชุดคำสั่งปัจจุบัน ====== */
+function removeStaleCards(currentIdsSet) {
+  // เอา element ทั้งหมดที่มี id "order-<id>" แล้วลบถ้าไม่อยู่ใน currentIdsSet
+  document.querySelectorAll('#orderList .order-card').forEach(card => {
+    const idAttr = card.id; // order-26
+    if (!idAttr) return;
+    const id = idAttr.replace('order-', '');
+    // numeric vs string: compare as string
+    if (!currentIdsSet.has(id) && !currentIdsSet.has(Number(id))) {
+      card.remove();
+      delete lastRendered[id];
+    }
+  });
+}
+async function loadOptionMap() {
+  const { data, error } = await supabaseClient
+    .from("options")
+    .select("id, name, price");
+
+  if (error) {
+    console.error("โหลด options ไม่สำเร็จ", error);
+    return;
+  }
+
+  optionMap = {};
+  (data || []).forEach(o => {
+    optionMap[o.id] = {
+      name: o.name,
+      price: Number(o.price || 0)
+    };
+  });
+}
+
+/* ====== loadOrders (ปรับให้ update เป็นรายตัว) ====== */
+async function loadOrders(){
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data: orders, error } = await supabaseClient
+    .from('orders')
+    .select('*')
+    .gte('created_at', today + " 00:00:00")
+    .lte('created_at', today + " 23:59:59")
+    .neq('status', 'รอรับออเดอร์')
+    .order('created_at');
+
+  if (error) {
+    console.error("supabase error", error);
+    return;
+  }
+
+  // เก็บ set ของ id ที่มีจริงในผลลัพธ์
+  const currentIds = new Set();
+
+  // render/update per order
+  for (const order of (orders || [])) {
+    // ensure id is string key for lastRendered map consistency
+    const idKey = String(order.id);
+    currentIds.add(idKey);
+    renderOrUpdateOrderCard(order);
+  }
+
+  // remove cards not present anymore
+  removeStaleCards(currentIds);
+
+  // apply hide filter (อาจซ่อนใหม่หาก toggle เปิด)
+  applyHideFilter();
+}
+
+/* ====== startCooking / finishCooking (เหมือนเดิม) ====== */
+async function startCooking(id){
+  try{
+    await supabaseClient
+      .from('orders')
+      .update({ status: 'กำลังทำอาหาร' })
+      .eq('id', id);
+  } catch(e) { console.error(e); }
+  // ภายหลังการอัปเดต ให้โหลดเพียงออเดอร์ที่เปลี่ยน (DB trigger จะ push realtime)
+  loadOrders();
+}
+
+async function finishCooking(id){
+  try {
+    await supabaseClient
+      .from('orders')
+      .update({ status: 'กำลังจัดส่ง' })
+      .eq('id', id);
+  } catch(e) { console.error(e); }
+  loadOrders();
+}
+
+/* ====== applyHideFilter (ซ่อนหลายสถานะได้) ====== */
+function applyHideFilter(){
+  document.querySelectorAll('.order-card').forEach(card => {
+    const st = card.dataset.status || '';
+    const completed = (st === 'กำลังจัดส่ง' || st === 'ส่งแล้ว' || st === 'เสร็จแล้ว');
+    if (hideCompleted && completed) card.style.display = 'none';
+    else card.style.display = 'block';
+  });
+}
+
+/* ====== Realtime subscription ====== */
+supabaseClient
+  .channel('orders-realtime')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+    // เมื่อมีการเปลี่ยนเกิดขึ้นในตาราง orders ให้โหลดเฉพาะรายการที่เปลี่ยน (หรือโหลดทั้งหน้า)
+    // payload.record มีข้อมูลใหม่ — แต่เพื่อเรียบง่าย ให้เรียก loadOrders() (มันจะอัพเดตแบบ per-order)
+    loadOrders();
+  })
+  .subscribe();
+
+/* ====== initial load + polling (fallback) ====== */
+async function init() {
+  await loadOptionMap();
+  loadOrders();
+  setInterval(loadOrders, 25000);
+}
+
+init();
+
+/* ====== ตั้งค่าเริ่มต้น toggle จากตัวแปร (ถ้าจำเป็น) ====== */
+document.getElementById('toggleHide').checked = hideCompleted;
+</script>
+
+</body>
+</html>
