@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Admin Panel - ครัวบ้านเรา</title>
+
+<style>
+  :root{
+  --accent:#ff6600;
+  --accent-2:#ff8800;
+  --bg: #fffaf5;
+  --dark:#202020;
+  --panel:#2a2a2a;
+}
+body { font-family: Tahoma, sans-serif; margin:0; background:var(--bg); color:#222; }
+header { background:var(--accent); color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; position:fixed; left:230px; right:0; top:0; z-index:30; }
+header h2 { margin:0; font-size:18px; }
+header .right-actions { display:flex; gap:8px; align-items:center; }
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 230px;
+  height: 100vh;
+  background: var(--dark);
+  color: #fff;
+  padding-top: 18px;
+  box-shadow: 2px 0 6px rgba(0,0,0,0.15);
+  z-index:40;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+}
+.brand {
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.brand img { width:38px; height:38px; object-fit:cover; border-radius:6px; }
+.brand .title { font-weight:700; font-size:16px; line-height:1; }
+.brand .sub { font-size:12px; color:rgba(255,255,255,0.7); margin-top:3px; }
+
+.sidebar-menu { list-style:none; padding:12px 0; margin:0; flex:1; }
+.sidebar-menu li { margin:6px 8px; }
+.sidebar-menu a {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  color:#fff;
+  text-decoration:none;
+  background:var(--panel);
+  border-radius:8px;
+  border-left:4px solid transparent;
+  transition: all 0.15s ease;
+  font-size:14px;
+}
+.sidebar-menu a:hover { transform: translateX(4px); background:#333; border-left:4px solid var(--accent); }
+
+/* ====== เอาแถบสีส้มเต็มแถวออก (active subtle) ====== */
+.sidebar-menu a.active {
+  background: var(--panel); /* ไม่เป็นแถบส้มทั้งแถว */
+  color: #fff;
+  border-left:4px solid var(--accent);
+  box-shadow: none;
+}
+
+.sidebar-bottom { padding:12px 14px; border-top:1px solid rgba(255,255,255,0.03); font-size:13px; color:rgba(255,255,255,0.8); }
+
+/* Main content */
+.main-content { margin-left:230px; padding:84px 22px 32px 22px; min-height:100vh; box-sizing:border-box; }
+.section { padding:6px 0; display:none; }
+.section.active { display:block; }
+
+.btn { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; color:white; }
+.btn-add { background:#28a745; }
+.btn-edit { background:#007bff; }
+.btn-del { background:#dc3545; }
+.btn-neutral { background:var(--accent-2); color:#fff; border: none; }
+
+table { width:100%; border-collapse:collapse; margin-top:12px; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.05); }
+thead th { background:var(--accent); color:white; padding:10px; text-align:center; font-weight:600; }
+td, th { border-bottom:1px solid #eee; padding:10px; vertical-align:top; }
+td img { max-width:80px; border-radius:6px; }
+
+/* Modal */
+.modal-bg {
+display: none;
+position: fixed;
+inset: 0;
+background: rgba(0,0,0,0.45);
+justify-content: center;
+align-items: center;
+z-index: 200;
+}
+.modal {
+  background: white;
+  padding: 28px 32px;
+  border-radius: 18px;
+  width: 980px;
+  max-width: 96vw;
+  box-shadow: 0 22px 60px rgba(0,0,0,0.28);
+  animation: popIn 0.18s ease;
+}
+.modal-content {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 36px;
+}
+.modal input,
+.modal select,
+.modal textarea {
+  padding: 13px 15px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  width: 100%;
+  margin-bottom: 14px;
+  background: #fff;
+  font-size: 15px;
+}
+.preview { width: 100%; height: 300px; object-fit: cover; border-radius: 14px; border: 1px solid #ddd; background: #f4f4f4; }
+
+/* Option UI */
+.opt-group { margin-bottom: 14px; border: 1px solid #dcdcdc; border-radius: 12px; overflow: hidden; background: white; transition: 0.22s; }
+.opt-header { padding: 12px 16px; background: #f7f7f7; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.opt-header-left { display: flex; align-items: center; gap: 10px; }
+.opt-header-left input[type="checkbox"] { width: 18px; height: 18px; }
+.opt-title { font-size: 15px; font-weight: 600; white-space: nowrap; }
+.opt-arrow { transition: 0.25s; font-size: 18px; opacity: 0.6; }
+.opt-group.active { border-color: var(--accent); }
+.opt-group.active .opt-arrow { transform: rotate(180deg); }
+.opt-options { padding: 12px 18px 10px; display: none; }
+.opt-group.active .opt-options { display: block; }
+.opt-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; line-height: 1; width: 100%; }
+.opt-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; }
+.opt-item label, .opt-item span { font-size: 15px; white-space: nowrap; line-height: 1.2; flex-grow: 1; overflow: hidden; }
+.opt-price { margin-left: auto; font-size: 15px; white-space: nowrap; flex-shrink: 0; }
+.row { display:flex; gap:12px; align-items:center; }
+.col { display:flex; flex-direction:column; gap:8px; }
+.input-mini { width:140px; padding:8px 10px; border-radius:8px; border:1px solid #ccc; }
+.card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom:20px;
+}
+.input {
+  padding: 10px;
+  width: 100%;
+  margin-bottom:12px;
+  border-radius: 8px;
+  border:1px solid #ccc;
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 24px;
+}
+.switch input { display:none; }
+.slider {
+  position:absolute; inset:0;
+  background:#ccc; border-radius:34px;
+  transition:.3s;
+}
+.slider:before {
+  content:"";
+  position:absolute;
+  height:18px; width:18px;
+  left:3px; bottom:3px;
+  background:white;
+  border-radius:50%;
+  transition:.3s;
+}
+input:checked + .slider { background:#4caf50; }
+input:checked + .slider:before { transform:translateX(22px); }
+
+/* ⭐ ล็อกไม่ให้เคอร์เซอร์การพิมพ์ขึ้นที่อื่น */
+    * { 
+      box-sizing: border-box; 
+      -webkit-tap-highlight-color: transparent;
+      user-select: none; /* ห้ามเลือกข้อความทั่วทั้งหน้า */
+      cursor: default;   /* ให้เมาส์เป็นลูกศรปกติเสมอ */
+    }
+
+body {
+  -webkit-text-size-adjust: 100%;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* Card / Container */
+.card,
+.container,
+.wrapper {
+  max-width: 100%;
+}
+
+/* Buttons & inputs */
+input, select, textarea, button {
+  font-size: 16px; /* กัน iOS zoom */
+}
+
+/* Mobile layout */
+@media (max-width: 768px) {
+
+  body {
+    background:#f6f7fb;
+  }
+
+  .sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: white;
+    border-top: 1px solid #ddd;
+    z-index: 999;
+  }
+
+  .sidebar a {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    padding: 6px 0;
+  }
+
+  main {
+    padding-bottom: 80px;
+  }
+
+  .section {
+    padding: 10px;
+  }
+
+  table {
+    font-size: 12px;
+  }
+
+  .btn {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .card,
+  .setting-card {
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 10px;
+  }
+
+  .order-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar" aria-label="Main sidebar">
+  <div class="brand">
+    <img id="brandLogo" src="https://vxutzcrwqbnkcwxtdphy.supabase.co/storage/v1/object/public/Logo/KruaBaanRao%20Logo.png" alt="logo">
+    <div>
+      <div id="brandTitle" class="title">ร้านครัวบ้านเรา</div>
+      <div class="sub">Admin Panel</div>
+    </div>
+  </div>
+
+  <ul class="sidebar-menu" role="menu">
+    <li><a href="#" id="tab-dashboard" onclick="switchTab('dashboardSec'); return false;">📊 Dashboard</a></li>
+    <li><a href="#" id="tab-order" onclick="switchTab('orderSec'); return false;">🧾 คิว Order</a></li>
+    <li><a href="#" id="tab-menu" onclick="switchTab('menuSec'); return false;">📋 จัดการเมนู</a></li>
+    <li><a href="#" id="tab-opt" onclick="switchTab('optSec'); return false;">✅️ ตัวเลือก</a></li>
+    <li><a href="#" id="tab-settings" onclick="switchTab('settingsSec'); loadStoreSettings(); return false;">🏪 ตั้งค่าร้าน</a></li>
+  </ul>
+
+  <div class="sidebar-bottom">
+    วันที่: <span id="todayDate"></span>
+  </div>
+</aside>
+
+<!-- Header -->
+<header>
+  <h2 id="pageTitle">Admin Panel - ครัวบ้านเรา</h2>
+  <div class="right-actions">
+    <button onclick="logout()" class="btn" style="background:#ff0066;">ออกจากระบบ</button>
+  </div>
+</header>
+
+<!-- Main: ทั้งหมดของ sections ต้องอยู่ภายใน main -->
+<main class="main-content">
+
+  <!-- DASHBOARD -->
+  <div id="dashboardSec" class="section">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3>Dashboard</h3>
+    </div>
+
+    <div style="margin-top:18px; display:flex; flex-direction:column; gap:20px;">
+
+      <!-- ยอดขายวันนี้ แบบเด่น -->
+      <div style="background:#fff3e6; padding:18px; border-radius:10px; font-size:22px; font-weight:700; text-align:center; color:#ff6600;">
+        💰 ยอดขายวันนี้: <span id="todaySales">0</span> บาท
+      </div>
+
+      <!-- เลือกช่วงเวลา -->
+      <div style="display:flex; gap:10px; align-items:center;">
+        <input type="date" id="dashFrom">
+        <input type="date" id="dashTo">
+
+        <button class="btn btn-neutral" onclick="loadDashboard()">ดู</button>
+      </div>
+
+      <!-- กราฟยอดขาย -->
+      <div style="background:white; padding:20px; border-radius:12px;">
+        <canvas id="salesChart" height="100"></canvas>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 340px; gap:20px;">
+        
+        <!-- ตารางยอดขายเดิม -->
+        <div>
+          <h4 style="margin-top:18px;">5 เมนูขายดีที่สุด</h4>
+          <table id="topMenusTable">
+            <thead><tr><th>เมนู</th><th>จำนวน</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Summary -->
+        <div>
+          <h4>สรุป</h4>
+          <div id="dashboardSummary" style="background:#fff;padding:12px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+            <p>ยอดขายรวม: <strong id="sumTotal">0</strong> บาท</p>
+            <p>บ้าน/โต๊ะ สั่งบ่อยสุด: <strong id="topHouse">-</strong></p>
+            <p>เนื้อสัตว์ที่ใช้มากสุด (ประมาณ): <strong id="topMeat">-</strong></p>
+          </div>
+        </div>
+
+      </div> <!-- ปิด grid wrapper -->
+
+    </div> <!-- ปิด content wrapper -->
+
+  </div> <!-- ปิด dashboardSec อย่างถูกต้อง -->
+
+  <!-- Orders (ย้ายเข้ามาอยู่ภายใน main) -->
+  <div id="orderSec" class="section">
+    <h3>รายการออเดอร์</h3>
+    <table> 
+      <thead>
+        <tr>
+          <th>ID</th><th>บ้านเลขที่</th><th>คิว</th><th>รายการ</th><th>รวม</th><th>สถานะ</th><th>การชำระเงิน</th><th>เวลา</th><th>จัดการ</th>
+        </tr>
+      </thead>
+      <div style="margin:10px 0; display:flex; align-items:center; gap:10px;">
+  <label class="switch">
+    <input type="checkbox" id="showAllOrdersSwitch">
+    <span class="slider"></span>
+  </label>
+  <span id="showAllOrdersText">แสดงเฉพาะออเดอร์วันนี้</span>
+</div>
+      <tbody id="orderTable"></tbody>
+    </table>
+  </div>
+
+  <!-- MENU -->
+  <div id="menuSec" class="section">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3>จัดการเมนู</h3>
+      <button class="btn btn-add" onclick="openMenuModal()">+ เพิ่มเมนู</button>
+    </div>
+    <table>
+      <thead><tr><th>ID</th><th>ชื่อ</th><th>ราคา</th><th>หมวด</th><th>รูป</th><th>แสดงผล</th><th>จัดการ</th></tr></thead>
+      <tbody id="menuTable"></tbody>
+    </table>
+  </div>
+
+  <!-- OPTIONS -->
+  <div id="optSec" class="section">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3>ตัวเลือก (Options)</h3>
+      <button class="btn btn-add" onclick="openOptModal()">+ เพิ่มตัวเลือก</button>
+    </div>
+    <table>
+      <thead><tr><th>ID</th><th>ประเภท</th><th>ชื่อ</th><th>ราคา</th><th>แสดงผล</th><th>จัดการ</th></tr></thead>
+      <tbody id="optTable"></tbody>
+    </table>
+  </div>
+
+  <!-- STORE SETTINGS -->
+  <div id="settingsSec" class="section">
+    <h3>ตั้งค่าร้าน</h3>
+
+    <div class="setting-card">
+  <h3>สถานะร้าน</h3>
+
+      <label class="switch">
+        <input type="checkbox" id="shopOpenSwitch">
+        <span class="slider"></span>
+      </label>
+
+      <span id="shopStatusText" style="margin-left:10px;font-weight:bold;"></span>
+    </div>
+
+    <div class="card">
+      <h4>ข้อมูลร้าน</h4>
+
+      <label>ชื่อร้าน</label>
+      <input id="storeName" class="input" placeholder="ชื่อร้าน">
+
+      <label>Concept ร้าน</label>
+      <textarea id="storeConcept" class="input" placeholder="ข้อความอธิบาย/คอนเซปต์ร้าน" 
+          style="height:80px;"></textarea>
+
+      <label>Line ID</label>
+      <input id="storeLine" class="input" placeholder="Line ID">
+
+      <label>เวลาเปิดร้าน</label>
+      <input id="storeOpen" type="time" class="input">
+
+      <label>เวลาปิดร้าน</label>
+      <input id="storeClose" type="time" class="input">
+
+      <label>โลโก้ร้าน</label>
+      <input id="storeLogo" type="file" onchange="previewLogo(event)">
+      <img id="logoPreview" style="width:140px; margin-top:10px; border-radius:10px;">
+
+      <label>ภาพพื้นหลังร้าน</label>
+      <input id="storeBG" type="file" onchange="previewBG(event)">
+      <img id="bgPreview" style="width:220px; margin-top:10px; border-radius:10px;">
+
+      <button class="btn btn-add" onclick="saveStoreSettings()">บันทึกข้อมูลร้าน</button>
+    </div>
+
+    <div class="card" style="margin-top:30px;">
+      <h4>QR Code ชำระเงิน</h4>
+
+      <input id="paymentQR" type="file" onchange="previewQR(event)">
+      <img id="qrPreview" style="width:200px; margin-top:10px; border-radius:10px;">
+
+      <button class="btn btn-add" onclick="saveQR()">บันทึก QR Code</button>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODALS (คงไว้เหมือนเดิม) -->
+<div id="menuModal" class="modal-bg" style="display:none;">
+  <div class="modal">
+    <h3>จัดการเมนู</h3>
+    <div class="modal-content">
+      <!-- LEFT -->
+      <div>
+        <input id="mName" placeholder="ชื่อเมนู">
+        <input id="mPrice" type="number" placeholder="ราคา">
+        <input id="mCat" placeholder="หมวดหมู่ (ไม่จำเป็น)">
+        <input id="mImage" type="file" onchange="handleImagePreview(event)">
+        <div id="menuOptionGroupList"></div>
+      </div>
+      <!-- RIGHT (Image Preview) -->
+      <div>
+        <img id="previewImg" class="preview">
+      </div>
+    </div>
+    <div class="btn-area" style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-add" onclick="saveMenu()">บันทึก</button>
+      <button class="btn btn-del" onclick="closeMenuModal()">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<div id="optModal" class="modal-bg" style="display:none;">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3>จัดการตัวเลือก</h3>
+    <input id="oType" placeholder="ประเภท เช่น: ขนาด, เครื่องดื่ม">
+    <input id="oName" placeholder="ชื่อตัวเลือก เช่น: ใหญ่, โค้ก">
+    <input id="oPrice" type="number" placeholder="ราคาเพิ่ม (0 ถ้าไม่มี)">
+    <div class="row" style="margin-top:12px;justify-content:flex-end;">
+      <button class="btn btn-add" onclick="saveOption()">บันทึก</button>
+      <button class="btn btn-del" onclick="closeOptModal()">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<!-- libs -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+/* ---------------- Supabase client ---------------- */
+const supabaseUrl = "https://vxutzcrwqbnkcwxtdphy.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dXR6Y3J3cWJua2N3eHRkcGh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0NzkzNDQsImV4cCI6MjA3NTA1NTM0NH0.zwbcu_4eGAiRTaX7QBwgrJhWgCda58FW-boeJM-ZlKg";
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+/* ---------------- State ---------------- */
+let editingMenuId = null;
+let editingOptId = null;
+let showAllOrders = false;
+window.optionMap = {}; 
+
+async function initAdmin() {
+    try {
+        // 1. โหลด Map ข้อมูลก่อน (เพื่อแก้ปัญหา "ตัวเลือกถูกลบ")
+        await loadOptionMap(); 
+        
+        // 2. ตั้งค่า Tab เริ่มต้น
+        switchTab("dashboardSec"); 
+        
+        // 3. โหลดออเดอร์ (อันนี้จะเรียก renderOrders อัตโนมัติ)
+        await loadOrders(); 
+
+        // 4. โหลดส่วนอื่นๆ พร้อมกัน
+        await Promise.all([
+            loadBrandUI(),
+            loadShopStatus(),
+            loadMenus(),
+            loadOptions()
+        ]);
+
+        // 5. เปิดระบบ Real-time
+        subscribeRealtime(); 
+        bindShopSwitch();
+        bindShowAllOrdersSwitch();
+
+    } catch (e) {
+        console.error("Initialization failed:", e);
+    }
+}
+
+// ใช้ตัวนี้เป็นตัวเปิดระบบเพียงตัวเดียว
+window.addEventListener("load", initAdmin);
+
+async function loadBrandUI() {
+  const { data, error } = await supabaseClient
+    .from("store_settings")
+    .select("*")
+    .eq("id", 1)
+    .single();
+
+  if (!data) return;
+
+  document.getElementById("brandTitle").innerText = data.store_name || "";
+  document.getElementById("brandLogo").src = data.logo_url || "";
+
+  // ⭐ ใช้ background
+  if (data.background_url) {
+    document.body.style.backgroundImage = `url('${data.background_url}')`;
+    document.body.style.backgroundSize = "cover";
+  }
+
+  // ⭐ ใช้ concept
+  const concept = document.getElementById("brandConcept");
+  if (concept) concept.innerText = data.store_concept || "";
+ }
+
+/* ---------------- Utilities ---------------- */
+function setActiveTab(tabId){
+  document.querySelectorAll(".sidebar-menu a").forEach(a=>a.classList.remove("active"));
+  const el = document.getElementById(tabId);
+  if(el) el.classList.add("active");
+}
+function formatDateNow(){ const d = new Date(); return d.toLocaleDateString("th-TH"); }
+document.getElementById("todayDate").innerText = formatDateNow();
+
+/* ---------------- Store settings helpers ---------------- */
+async function loadShopStatus() {
+  const { data, error } = await supabaseClient
+    .from("shop_settings")
+    .select("id, is_open")
+    .eq("id", 1)
+    .maybeSingle();   // 🔥 สำคัญ
+
+  // ถ้ายังไม่มี row → สร้างให้เลย
+  if (!data) {
+    const { error: insertError } = await supabaseClient
+      .from("shop_settings")
+      .insert({ id: 1, is_open: true });
+
+    if (insertError) {
+      console.error("Insert shop_settings failed:", insertError);
+      return;
+    }
+
+    document.getElementById("shopOpenSwitch").checked = true;
+    document.getElementById("shopStatusText").textContent = "🟢 เปิดร้าน";
+    return;
+  }
+
+  const sw = document.getElementById("shopOpenSwitch");
+  const text = document.getElementById("shopStatusText");
+
+  sw.checked = data.is_open;
+  text.textContent = data.is_open ? "🟢 เปิดร้าน" : "🔴 ปิดร้าน";
+}
+
+function bindShopSwitch() {
+  const sw = document.getElementById("shopOpenSwitch");
+  if (!sw) {
+    console.error("shopOpenSwitch not found");
+    return;
+  }
+
+  sw.onchange = async (e) => {
+    const isOpen = e.target.checked;
+
+    const { error } = await supabaseClient
+      .from("shop_settings")
+      .update({ is_open: isOpen })
+      .eq("id", 1);
+
+    if (error) {
+      alert("อัปเดตสถานะร้านไม่สำเร็จ: " + error.message);
+      e.target.checked = !isOpen;
+      return;
+    }
+
+    document.getElementById("shopStatusText").textContent =
+      isOpen ? "🟢 เปิดร้าน" : "🔴 ปิดร้าน";
+  };
+}
+
+async function loadStoreSettings() {
+  const { data, error } = await supabaseClient
+    .from("store_settings")
+    .select("*")
+    .eq("id", 1)
+    .single();
+
+  if (error || !data) return;
+
+  document.getElementById("storeName").value = data.store_name || "";
+  document.getElementById("storeLine").value = data.line_id || "";
+  document.getElementById("storeOpen").value = data.open_time || "";
+  document.getElementById("storeClose").value = data.close_time || "";
+  document.getElementById("storeConcept").value = data.store_concept || "";
+  
+  if (data.store_background)
+    document.getElementById("bgPreview").src = data.store_background;
+
+  if (data.logo_url)
+    document.getElementById("logoPreview").src = data.logo_url;
+
+  if (data.qr_url)
+    document.getElementById("qrPreview").src = data.qr_url;
+
+  // อัปเดตโลโก้ + ชื่อร้านด้านบน
+  if (data.logo_url) document.getElementById("brandLogo").src = data.logo_url;
+  if (data.store_name) document.getElementById("brandTitle").innerText = data.store_name;
+}
+
+async function uploadLogo(file) {
+  if (!file) return null;
+
+  const bucket = "Logo";
+  const fileName = "logo.png"; // ชื่อไฟล์คงที่เสมอ
+
+  // 1. ลบไฟล์เก่า (ถ้ามี)
+  const { error: removeError } = await supabaseClient.storage
+    .from(bucket)
+    .remove([fileName]);
+
+  if (removeError) {
+    console.warn("Remove old logo error:", removeError.message);
+  }
+
+  // 2. อัปโหลดไฟล์ใหม่ (บังคับทับได้)
+  const { data, error: uploadError } = await supabaseClient.storage
+    .from(bucket)
+    .upload(fileName, file, {
+      cacheControl: "3600",
+      upsert: true
+    });
+
+  if (uploadError) {
+    console.error("Upload Logo Error:", uploadError);
+    alert("อัปโหลดโลโก้ไม่สำเร็จ: " + uploadError.message);
+    return null;
+  }
+
+  // 3. ดึง public URL
+  const { data: urlData } = supabaseClient.storage
+    .from(bucket)
+    .getPublicUrl(fileName);
+
+  return urlData.publicUrl + "?v=" + Date.now();
+}
+
+async function uploadBackground(file) {
+  console.log("BG FILE >>>", file);
+
+  if (!file) return null;
+
+  const bucket = "other-image";
+  const filePath = "background.jpg";
+
+  // ลบไฟล์เก่า
+  await supabaseClient.storage.from(bucket).remove([filePath]);
+
+  // อัปโหลดไฟล์ใหม่
+  const { data, error } = await supabaseClient.storage
+    .from(bucket)
+    .upload(filePath, file, {
+      upsert: true,
+      contentType: file.type
+    });
+
+  console.log("BG UPLOAD DATA:", data);
+  console.log("BG UPLOAD ERROR:", error);
+
+  if (error) {
+    alert("อัปโหลดพื้นหลังไม่สำเร็จ: " + error.message);
+    return null;
+  }
+
+  const { data: urlData } = supabaseClient.storage
+    .from(bucket)
+    .getPublicUrl(filePath);
+
+  const backgroundURL = urlData.publicUrl + "?v=" + Date.now();
+  return backgroundURL;
+}
+
+
+function previewLogo(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const url = URL.createObjectURL(file);
+  const img = document.getElementById("logoPreview");
+  img.onload = ()=> URL.revokeObjectURL(url);
+  img.src = url;
+}
+
+function previewQR(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const url = URL.createObjectURL(file);
+  const img = document.getElementById("qrPreview");
+  img.onload = ()=> URL.revokeObjectURL(url);
+  img.src = url;
+}
+
+function previewBG(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const url = URL.createObjectURL(file);
+  const img = document.getElementById("bgPreview");
+  img.onload = ()=> URL.revokeObjectURL(url);
+  img.src = url;
+}
+
+async function saveStoreSettings(){
+
+  const logoFile = document.getElementById("storeLogo").files[0];
+  const bgFile   = document.getElementById("storeBG").files[0];
+  const qrFile   = document.getElementById("paymentQR").files[0];
+
+  let logoURL = null;
+  let bgURL   = null;
+  let qrURL   = null;
+
+  if (logoFile) logoURL = await uploadLogo(logoFile);
+  if (bgFile)   bgURL   = await uploadBackground(bgFile);
+  if (qrFile)   qrURL   = await uploadQR(qrFile);
+
+  const payload = {
+    store_name: document.getElementById("storeName").value.trim(),
+    store_concept: document.getElementById("storeConcept").value.trim(),
+    line_id: document.getElementById("storeLine").value.trim(),
+    open_time: document.getElementById("storeOpen").value.trim(),
+    close_time: document.getElementById("storeClose").value.trim(),
+  };
+
+  if (logoURL) payload.logo_url = logoURL;
+  if (bgURL)   payload.store_background = bgURL;
+  if (qrURL)   payload.qr_url = qrURL;
+
+  const { error } = await supabaseClient
+    .from("store_settings")
+    .update(payload)
+    .eq("id", 1);
+
+  if(error){
+    alert("บันทึกไม่สำเร็จ: " + error.message);
+    console.error(error);
+    return;
+  }
+
+  alert("บันทึกข้อมูลร้านเรียบร้อย!");
+  loadStoreSettings();
+}
+
+async function uploadQR(file) {
+  if (!file) return null;
+
+  const fileName = "qr.png";
+
+  // 1. ลบไฟล์เก่าในโฟลเดอร์ qr/
+  await supabaseClient.storage
+  .from("payment-qr")
+  .remove(["qr.png"]);
+
+  // 2. อัปโหลดไฟล์ใหม่ชื่อเดิม
+  const { error } = await supabaseClient.storage
+  .from("payment-qr")
+  .upload("qr.png", file, { upsert: true });
+
+  if (error) {
+    alert("อัปโหลด QR ไม่สำเร็จ: " + error.message);
+    return null;
+  }
+
+  // 3. ดึง Public URL
+  const { data } = supabaseClient.storage
+  .from("payment-qr")
+  .getPublicUrl("qr.png");
+
+return data.publicUrl + "?v=" + Date.now();
+}
+
+
+async function saveQR() {
+  const file = document.getElementById("paymentQR").files[0];
+  if (!file) return alert("กรุณาเลือกภาพ");
+
+  const qrURL = await uploadQR(file);
+  if (!qrURL) return;
+
+  const { error } = await supabaseClient
+    .from("store_settings")
+    .update({ qr_url: qrURL })
+    .eq("id", 1);
+
+  if (error) {
+    alert("บันทึก QR ไม่สำเร็จ: " + error.message);
+    return;
+  }
+
+  alert("บันทึก QR สำเร็จ");
+  loadStoreSettings();
+}
+
+window.ACTIVE_STATUS = window.ACTIVE_STATUS || [
+  'รอรับออเดอร์',
+  'รับออเดอร์',
+  'กำลังทำอาหาร',
+  'กำลังจัดส่ง'
+];
+
+/* ------------------- XSS Safe Escape Function ------------------- */
+function escapeHtml(text) {
+  if (typeof text !== "string") return text;
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/* ----------------------------------------------------
+   Queue system: getNextQueueNumber + assign
+---------------------------------------------------- */
+const ACTIVE_STATUS = [
+  "รอรับออเดอร์",
+  "รับออเดอร์",
+  "กำลังทำอาหาร",
+  "กำลังจัดส่ง"
+];
+async function getNextQueueNumber() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const { data, error } = await supabaseClient
+    .from("orders")
+    .select("queue_number")
+    .gte("created_at", today.toISOString())
+    .lt("created_at", tomorrow.toISOString())
+    .in("status", ACTIVE_STATUS)
+    .not("queue_number", "is", null)
+    .order("queue_number", { ascending:false })
+    .limit(1);
+
+  if (error || !data.length) return 1;
+
+  return Number(data[0].queue_number) + 1;
+}
+
+async function assignQueueIfMissing(orderId, queueNumber) {
+  try {
+    const { error } = await supabaseClient
+      .from("orders")
+      .update({ queue_number: queueNumber })
+      .eq("id", orderId);
+    if (error) {
+      console.error("assignQueueIfMissing", error);
+      return false;
+    }
+    return true;
+  } catch (e) { console.error(e); return false; }
+}
+
+window.optionMap = {};
+
+/* ===============================
+   Helper: parse items (เหมือน order-status)
+================================ */
+function parseOrderItems(itemsRaw) {
+  if (!itemsRaw) return [];
+  let items = Array.isArray(itemsRaw) ? itemsRaw : JSON.parse(itemsRaw || "[]");
+
+  return items.map(it => {
+    const options = Array.isArray(it.options) ? it.options.map(o => {
+      // 1. หาใน Map ก่อน
+      const optFromMap = window.optionMap[o.id];
+      if (optFromMap) return { name: optFromMap.name, price: optFromMap.price };
+      
+      // 2. ถ้าใน Map ไม่มี (อาจโดนลบ) ให้ดูว่าในออเดอร์มีชื่อเก็บไว้ไหม
+      if (o.name) return { name: o.name, price: o.price || 0 };
+      
+      // 3. สุดท้ายถ้าไม่เจอจริงๆ
+      return { name: "(ตัวเลือกถูกลบแล้ว)", price: 0 };
+    }) : [];
+
+    return {
+      qty: it.qty || 1,
+      food: it.food || "ไม่พบชื่อเมนู",
+      note: it.note || "",
+      price: Number(it.price || 0),
+      options
+    };
+  });
+}
+
+/* ===============================
+   Load option map (Admin)
+================================ */
+async function loadOptionMap() {
+  const { data, error } = await supabaseClient.from("options").select("id, name, price");
+  if (error) return console.error("Load options failed", error);
+
+  window.optionMap = {};
+  (data || []).forEach(o => {
+    // เก็บไว้ทั้งแบบเลขและตัวอักษรเพื่อป้องกันการหาไม่เจอ
+    window.optionMap[o.id] = { name: o.name, price: Number(o.price || 0) };
+    window.optionMap[String(o.id)] = { name: o.name, price: Number(o.price || 0) };
+  });
+}
+
+function bindShowAllOrdersSwitch(){
+  const sw = document.getElementById("showAllOrdersSwitch");
+  const text = document.getElementById("showAllOrdersText");
+  if(!sw || !text) return;
+
+  sw.addEventListener("change", ()=>{
+    showAllOrders = sw.checked;
+    text.textContent = showAllOrders ? "แสดงออเดอร์ทั้งหมด" : "แสดงเฉพาะออเดอร์วันนี้";
+    loadOrders();
+  });
+}
+
+function switchTab(tabId) {
+  // ซ่อนทุก tab
+  document.querySelectorAll(".tab-content").forEach(el => {
+    el.style.display = "none";
+  });
+
+  // เอา active ออกจากทุกปุ่ม
+  document.querySelectorAll(".tab-btn").forEach(el => {
+    el.classList.remove("active");
+  });
+
+  // แสดง tab ที่เลือก
+  const tab = document.getElementById(tabId);
+  if (tab) tab.style.display = "block";
+
+  // ใส่ active ให้ปุ่มที่กด
+  const btn = document.querySelector(`[data-tab="${tabId}"]`);
+  if (btn) btn.classList.add("active");
+}
+
+/* ---------------- Orders ---------------- */
+async function loadOrders() {
+  try {
+    let { data: orders, error } = await supabaseClient
+      .from("orders")
+      .select("*")
+      .order("id", { ascending: false });
+
+    if (error) throw error;
+    orders = orders || [];
+
+    // เช็คว่ามีออเดอร์ไหนที่ "ต้องมีคิวแต่ยังไม่มี" หรือไม่
+    const needsQueue = orders.some(o => 
+      (!o.queue_number || o.queue_number === 0) && ACTIVE_STATUS.includes(o.status)
+    );
+
+    // ✅ ถ้ามีออเดอร์คิวว่าง ให้สั่งจัดคิวใหม่ที่ Server ทีเดียว (RPC)
+    if (needsQueue) {
+      await supabaseClient.rpc('rerun_all_queue');
+      return await loadOrders(); // โหลดข้อมูลใหม่ที่จัดคิวแล้ว
+    }
+
+    // Filter วันนี้
+    if (!showAllOrders) {
+      const today = new Date().toLocaleDateString('en-CA'); 
+      orders = orders.filter(o => o.created_at.startsWith(today));
+    }
+
+    renderOrders(orders);
+  } catch (e) {
+    console.error("loadOrders error", e);
+  }
+}
+
+function isSafeUrl(url) {
+  try {
+    const u = new URL(url, window.location.origin);
+    // อนุญาตเฉพาะ http(s)
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch (e) {
+    return false;
+  }
+}
+
+function renderOrders(data) {
+  const tbody = document.getElementById("orderTable");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  data.forEach(o => {
+
+    console.log("cash:", o.cash_paid, o.cash_change);
+
+
+    /* 🔴 (1) สร้าง tr ก่อน */
+    const tr = document.createElement("tr");
+
+    /* ID */
+    const tdId = document.createElement("td");
+    tdId.textContent = o.id;
+    tr.appendChild(tdId);
+
+    /* บ้านเลขที่ */
+    const tdHouse = document.createElement("td");
+    tdHouse.textContent = o.house || "-";
+    tr.appendChild(tdHouse);
+
+    /* คิว */
+    const tdQueue = document.createElement("td");
+    tdQueue.textContent =
+      o.status === "ส่งแล้ว"
+        ? "-"
+        : (o.queue_number || "-");
+    tr.appendChild(tdQueue);
+
+    /* =========================
+       🔥 รายการอาหาร (จุดสำคัญ)
+    ========================= */
+    const tdItems = document.createElement("td");
+    tdItems.style.minWidth = "260px";
+
+    const items = parseOrderItems(o.items, window.optionMap || {});
+    console.log("parsed items:", items);
+
+    const itemsHtml = items.map(it => {
+  const basePrice = Number(it.price || 0);
+  let optionTotal = 0;
+
+
+const opts = it.options.length
+  ? it.options.map(opt => {
+      const name = opt?.name || "(ตัวเลือกถูกลบแล้ว)";
+      const price = Number(opt?.price || 0);
+
+      optionTotal += price;
+
+      return `
+        <div>
+          - ${escapeHtml(name)}
+          ${price > 0 ? `<span style="color:#ff0000;"> +${price}</span>` : ""}
+        </div>
+      `;
+    }).join("")
+  : `<div>- ธรรมดา</div>`;
+
+  const note = it.note
+    ? `<div style="font-size:12px;color:#999;">หมายเหตุ: ${escapeHtml(it.note)}</div>`
+    : "";
+
+  const itemTotal = (basePrice + optionTotal) * (it.qty || 1);
+
+  return `
+    <div style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;">
+        <strong>${it.qty} × ${escapeHtml(it.food)}</strong>
+      </div>
+
+      <div style="font-size:12px;color:#555;margin-left:12px;">
+        ${opts}
+      </div>
+
+      ${note}
+
+      <div style="font-size:12px;color:#333;margin-left:12px;">
+        รวมเมนูนี้ = <strong>${itemTotal}</strong> บาท
+      </div>
+    </div>
+  `;
+}).join("");
+
+    tdItems.innerHTML = itemsHtml || "<div style='color:#777'>ไม่มีรายการ</div>";
+    tr.appendChild(tdItems);
+
+    // Total
+    const tdTotal = document.createElement("td");
+    tdTotal.style.width = "110px";
+    tdTotal.textContent = `${Number(o.total || 0).toLocaleString()} บาท`;
+    tr.appendChild(tdTotal);
+
+    // Status cell (มี id เพื่ออัปเดต)
+    const tdStatus = document.createElement("td");
+    tdStatus.id = `order-status-${o.id}`;
+    tdStatus.style.width = "120px";
+    tdStatus.textContent = o.status || "-";
+    tr.appendChild(tdStatus);
+
+    // Payment info (ปุ่มดูสลิป สร้างด้วย eventListener)
+    const tdPay = document.createElement("td");
+    tdPay.style.width = "120px";
+    if (o.payment_method === "QR" && o.payment_slip && isSafeUrl(o.payment_slip)) {
+      const btn = document.createElement("button");
+      btn.className = 'btn btn-neutral';
+      btn.type = 'button';
+      btn.textContent = 'ดูสลิป';
+      // ผูก event แทนการฝัง onclick ด้วย string
+      btn.addEventListener('click', () => viewSlip(o.payment_slip));
+      tdPay.appendChild(btn);
+    } else if (o.payment_method === "เงินสด") {
+
+  const paid = Number(o.cash_paid || 0);
+  const change = Number(o.cash_change || 0);
+
+  tdPay.innerHTML = `
+    <div>เงินสด</div>
+    ${paid > 0 ? `<div style="font-size:12px;color:#555;">รับเงิน: ${paid.toLocaleString()} บาท</div>` : ""}
+    ${paid > 0 ? `<div style="font-size:12px;color:#d32f2f;">ทอน: ${change.toLocaleString()} บาท</div>` : ""}
+  `;
+} else {
+      tdPay.textContent = "-";
+    }
+    tr.appendChild(tdPay);
+
+    // created_at (แสดงเป็นเวลาไทย)
+    const tdCreated = document.createElement("td");
+    tdCreated.style.whiteSpace = "nowrap";
+    tdCreated.style.width = "160px";
+    tdCreated.textContent = o.created_at
+      ? new Date(o.created_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })
+      : "-";
+    tr.appendChild(tdCreated);
+
+    // Action buttons (ไม่ใช้ inline onclick — ใช้ addEventListener)
+    const tdActions = document.createElement("td");
+    tdActions.style.whiteSpace = "nowrap";
+
+    const btnAccept = document.createElement("button");
+    btnAccept.className = "btn btn-neutral";
+    btnAccept.type = 'button';
+    btnAccept.textContent = "รับ";
+    btnAccept.addEventListener("click", () => updateStatus(o.id, 'รับออเดอร์'));
+    tdActions.appendChild(btnAccept);
+
+    const btnMake = document.createElement("button");
+    btnMake.className = "btn btn-edit";
+    btnMake.type = 'button';
+    btnMake.textContent = "ทำ";
+    btnMake.addEventListener("click", () => updateStatus(o.id, 'กำลังทำอาหาร'));
+    tdActions.appendChild(btnMake);
+
+    const btnDeliver = document.createElement("button");
+    btnDeliver.className = "btn btn-add";
+    btnDeliver.type = 'button';
+    btnDeliver.textContent = "ส่ง";
+    btnDeliver.addEventListener("click", () => updateStatus(o.id, 'กำลังจัดส่ง'));
+    tdActions.appendChild(btnDeliver);
+
+    const btnDone = document.createElement("button");
+    btnDone.className = "btn btn-del";
+    btnDone.type = 'button';
+    btnDone.textContent = "ส่งแล้ว";
+    btnDone.addEventListener("click", () => sendDone(o.id));
+    tdActions.appendChild(btnDone);
+
+    tr.appendChild(tdActions);
+
+    tbody.appendChild(tr);
+  });
+}
+
+/* ---------------- Re-run queue (reindex) ---------------- */
+async function rerunAllQueue() {
+  try {
+    // Simple server-side reindex RPC (recommended) or do in-client with single SQL:
+    const { data, error } = await supabaseClient.rpc('rerun_all_queue');
+    if (error) { console.error("rerunAllQueue rpc error:", error); alert("ไม่สามารถจัดคิวใหม่ได้"); return; }
+    await loadOrders();
+    alert("จัดคิวใหม่เรียบร้อย");
+  } catch (e) { console.error(e); alert("เกิดข้อผิดพลาดขณะจัดคิว"); }
+}
+
+function renderStatusIcon(status) {
+  if (status === "ส่งแล้ว") {
+    return `<span style="color:green;font-size:20px;">✔</span>`;
+  }
+  return status || "-";
+}
+
+/* ---------------- Update status ---------------- */
+async function updateStatus(orderId, newStatus) {
+  try {
+    // 1. สั่ง Update ไปที่ Database
+    const { error } = await supabaseClient
+      .from('orders')
+      .update({ status: newStatus })
+      .eq('id', orderId);
+
+    if (error) throw error;
+
+    // ✅ ส่วนที่คุณถาม (เก็บไว้) 
+    // ช่วยให้ตัวหนังสือเปลี่ยนทันทีโดยไม่ต้องรอโหลดหน้าใหม่ (UX ดีขึ้น)
+    const statusTd = document.getElementById(`order-status-${orderId}`);
+    if (statusTd) statusTd.innerText = newStatus;
+
+    // 2. ถ้าสถานะเป็น "ส่งแล้ว" ต้องสั่งจัดคิวใหม่ที่ Server (RPC)
+    if (newStatus === "ส่งแล้ว") {
+      // เคลียร์คิวออเดอร์นั้นก่อน แล้วค่อยสั่ง rerun_all_queue
+      await supabaseClient.from('orders').update({ queue_number: null }).eq('id', orderId);
+      await supabaseClient.rpc('rerun_all_queue');
+    }
+
+    // ✅ ส่วนที่คุณถาม (ต้องมี!) 
+    // สั่งให้โหลดออเดอร์ใหม่หลังจากจัดคิวเสร็จ 0.5 วินาที 
+    // เพื่อให้เลขคิวที่จัดใหม่มาแสดงบนหน้าจอเรา
+    scheduleOrdersReload(500);
+
+  } catch (err) {
+    console.error(err);
+    alert("อัปเดตสถานะไม่สำเร็จ");
+  }
+}
+
+/* ---------------- Upload delivery image when marking done ---------------- */
+async function sendDone(id){
+  const fileInput = document.createElement("input");
+  fileInput.type="file"; fileInput.accept="image/*";
+  fileInput.onchange=async()=>{
+    const file=fileInput.files[0];
+    if(!file) return;
+    const fileName=`delivery_${Date.now()}_${file.name}`.replace(/\s+/g,'_');
+    const { error } = await supabaseClient.storage.from("delivery-images").upload(fileName, file);
+    if(error) return alert("อัปโหลดสลิปไม่สำเร็จ: " + (error.message||error));
+    const { data } = supabaseClient.storage.from("delivery-images").getPublicUrl(fileName);
+    const imgUrl = data.publicUrl;
+   await supabaseClient
+  .from("orders")
+  .update({
+    status:"ส่งแล้ว",
+    delivery_image: imgUrl,
+    queue_number: null
+  })
+  .eq("id", id);
+
+// call RPC once
+  await supabaseClient.rpc('rerun_all_queue');
+  scheduleOrdersReload(500);
+  
+  };
+  fileInput.click();
+}
+
+/* ---------------- Real-time subscription ---------------- */
+let realtimeReloadTimer = null;
+function scheduleOrdersReload(delay = 300) {
+  if (realtimeReloadTimer) clearTimeout(realtimeReloadTimer);
+  realtimeReloadTimer = setTimeout(()=> { loadOrders().catch(e=>console.error(e)); realtimeReloadTimer = null; }, delay);
+}
+
+let channelRef = null;
+function subscribeRealtime(){
+  if (channelRef) return;
+  channelRef = supabaseClient.channel("orders")
+    .on("postgres_changes", { event:"INSERT", schema:"public", table:"orders" }, payload => {
+      playSound();
+      // For INSERT we can optimistically fetch only the new row or schedule a reload
+      scheduleOrdersReload(500);
+    })
+    .on("postgres_changes", { event:"UPDATE", schema:"public", table:"orders" }, payload => {
+      // Only schedule reload — do not reload immediately on every update
+      scheduleOrdersReload(700);
+    })
+    .subscribe();
+  }
+  window.addEventListener('beforeunload', () => {
+  try { if(channelRef) channelRef.unsubscribe(); } catch(e){}
+});
+
+function playSound(){
+  const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+  audio.play().catch(err=>{ console.log("Autoplay blocked"); });
+}
+
+/* ---------------- View slip modal ---------------- */
+function viewSlip(url){
+  if(!isSafeUrl(url)) {
+    alert("ไม่พบรูป หรือ URL ไม่ปลอดภัย");
+    return;
+  }
+  const bg = document.createElement("div");
+  bg.id = "__slip_bg";
+  bg.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;";
+  bg.innerHTML = `
+    <div style="background:white;padding:10px;border-radius:8px;max-width:95vw;" id="__slip_box">
+      <img src="${escapeHtml(url)}" style="max-width:90vw;max-height:80vh;border-radius:8px;">
+      <div style="text-align:center;margin-top:6px;">
+        <button id="__close_slip_btn">ปิด</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bg);
+  document.getElementById("__close_slip_btn").onclick = ()=> { const el = document.getElementById("__slip_bg"); if(el) el.remove(); };
+}
+
+/* ---------------- Menus & Options (แก้ saveMenu bug) ---------------- */
+async function loadMenus(){
+  try{
+    const { data, error } = await supabaseClient.from("menus").select("*").order("id");
+    if(error) throw error;
+    const tbody=document.getElementById("menuTable"); if(!tbody) return; tbody.innerHTML="";
+    (data||[]).forEach(m=>{
+      const row=document.createElement("tr");
+      row.innerHTML = `
+        <td style="width:60px;">${m.id}</td>
+        <td style="text-align:left">${m.name}</td>
+        <td style="width:90px">${m.price}</td>
+        <td style="width:120px">${m.category || "-"}</td>
+        <td>${m.image_url ? `<img src="${m.image_url}" width="80">` : "-"}</td>
+        <td style="width:90px"><input type="checkbox" ${m.visible ? "checked" : ""} onchange="toggleVisible('menus',${m.id},this.checked)"></td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-edit" onclick="openMenuModal(${m.id})">แก้ไข</button>
+          <button class="btn btn-del" onclick="deleteItem('menus',${m.id})">ลบ</button>
+        </td>`;
+      tbody.appendChild(row);
+    });
+  }catch(e){ console.error("loadMenus err", e); }
+}
+
+async function loadOptions(){
+  try{
+    const { data, error }=await supabaseClient.from("options").select("*").order("id");
+    if(error) throw error;
+    const tbody=document.getElementById("optTable"); if(!tbody) return; tbody.innerHTML="";
+    (data||[]).forEach(o=>{
+      const row=document.createElement("tr");
+      row.innerHTML=`
+        <td style="width:60px;">${o.id}</td><td style="text-align:left">${o.type}</td><td style="text-align:left">${o.name}</td><td style="width:90px">${o.price}</td>
+        <td style="width:90px"><input type="checkbox" ${o.visible?"checked":""} onchange="toggleVisible('options',${o.id},this.checked)"></td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-edit" onclick="openOptModal(${o.id})">แก้ไข</button>
+          <button class="btn btn-del" onclick="deleteItem('options',${o.id})">ลบ</button>
+        </td>`;
+      tbody.appendChild(row);
+    });
+  }catch(e){ console.error("loadOptions err", e); }
+}
+
+/* ==== Option Groups + Options Rendering ==== */
+async function loadOptionGroups(){
+const { data, error } = await supabaseClient.from("option_groups").select("id,name,visible").order("id");
+return error ? [] : data;
+}
+async function loadOptionsByGroup(gid){
+const { data } = await supabaseClient.from("options").select("*").eq("group_id",gid).order("id");
+return data || [];
+}
+async function loadMenuSelectedGroups(mid){
+const { data } = await supabaseClient.from("menu_option_groups").select("group_id").eq("menu_id",mid);
+return data ? data.map(x=>x.group_id) : [];
+}
+async function loadMenuSelectedOptions(mid){
+const { data } = await supabaseClient.from("menu_options").select("option_id").eq("menu_id",mid);
+return data ? data.map(x=>x.option_id) : [];
+}
+async function renderMenuOptionPanel(menuId=null){
+  const groups = await loadOptionGroups();
+  const selectedGroups = menuId ? await loadMenuSelectedGroups(menuId) : [];
+  const selectedOptions = menuId ? await loadMenuSelectedOptions(menuId) : [];
+
+  const container = document.getElementById("menuOptionGroupList");
+  container.innerHTML = ""; // เคลียร์ของเดิม
+
+  for (const g of groups) {
+    // parent group container
+    const groupDiv = document.createElement("div");
+    groupDiv.className = "opt-group";
+    groupDiv.dataset.groupId = g.id;
+
+    // header (checkbox + title + arrow)
+    const header = document.createElement("div");
+    header.className = "opt-header";
+    header.style.display = "flex";
+    header.style.alignItems = "center";
+    header.style.justifyContent = "space-between";
+    header.style.padding = "8px";
+    header.style.cursor = "pointer";
+
+    const left = document.createElement("div");
+    left.style.display = "flex";
+    left.style.alignItems = "center";
+    left.style.gap = "10px";
+
+    const groupChk = document.createElement("input");
+    groupChk.type = "checkbox";
+    groupChk.className = "mog";
+    groupChk.value = g.id;
+    if (selectedGroups.includes(g.id)) groupChk.checked = true;
+
+    // keep same class name for saving logic (saveMenuOptionGroups uses '.mog')
+    const title = document.createElement("div");
+    title.textContent = g.name;
+    title.className = "opt-title";
+    title.style.fontWeight = "600";
+
+    left.appendChild(groupChk);
+    left.appendChild(title);
+
+    const arrow = document.createElement("div");
+    arrow.className = "opt-arrow";
+    arrow.textContent = "▾";
+    arrow.style.transition = "0.2s";
+
+    header.appendChild(left);
+    header.appendChild(arrow);
+
+    // options list (inner body) - will populate from DB
+    const optionsBox = document.createElement("div");
+    optionsBox.className = "opt-options";
+    optionsBox.style.marginTop = "8px";
+    optionsBox.style.paddingLeft = "10px";
+    optionsBox.style.display = selectedGroups.includes(g.id) ? "block" : "none";
+
+    // เมื่อคลิก header (ไม่ตรงที่เป็น checkbox) ให้พับ/กาง
+    header.addEventListener("click", (ev) => {
+      if (ev.target === groupChk) return; // ถ้ากดที่ checkbox อย่า toggle
+      const isOpen = optionsBox.style.display === "block";
+      optionsBox.style.display = isOpen ? "none" : "block";
+      arrow.style.transform = isOpen ? "rotate(0deg)" : "rotate(180deg)";
+    });
+
+    // ถ้ากด checkbox group ให้แสดง/ซ่อน optionsBox
+    groupChk.addEventListener("change", () => {
+      optionsBox.style.display = groupChk.checked ? "block" : "none";
+      arrow.style.transform = groupChk.checked ? "rotate(180deg)" : "rotate(0deg)";
+    });
+
+    // โหลด options ของกลุ่มจาก DB แล้ว render
+    (async () => {
+      const opts = await loadOptionsByGroup(g.id);
+      optionsBox.innerHTML = ""; // เคลียร์ก่อน
+      opts.forEach(o => {
+        const row = document.createElement("div");
+        row.style.display = "flex";
+        row.style.justifyContent = "space-between";
+        row.style.alignItems = "center";
+        row.style.padding = "6px 4px";
+        row.style.fontSize = "14px";
+
+        const leftRow = document.createElement("label");
+        leftRow.style.display = "flex";
+        leftRow.style.alignItems = "center";
+        leftRow.style.gap = "8px";
+        leftRow.style.cursor = "pointer";
+
+        const optChk = document.createElement("input");
+        optChk.type = "checkbox";
+        optChk.className = "optCheck mo"; // ให้ตรงกับ saveMenuOptions ที่หา '.mo'
+        optChk.dataset.group = g.id;
+        optChk.value = o.id;
+        if (selectedOptions.includes(o.id)) optChk.checked = true;
+
+        const optName = document.createElement("span");
+        optName.textContent = o.name;
+
+        leftRow.appendChild(optChk);
+        leftRow.appendChild(optName);
+
+        const priceSpan = document.createElement("span");
+        priceSpan.style.opacity = "0.75";
+        priceSpan.textContent = (o.price && Number(o.price) !== 0) ? `฿${o.price}` : "";
+
+        row.appendChild(leftRow);
+        row.appendChild(priceSpan);
+
+        optionsBox.appendChild(row);
+      });
+    })();
+
+    // ประกอบทั้งหมดเข้าด้วยกัน
+    groupDiv.appendChild(header);
+    groupDiv.appendChild(optionsBox);
+    container.appendChild(groupDiv);
+  }
+}
+
+async function saveMenuOptionGroups(menuId){
+   await supabaseClient.from('menu_option_groups').delete().eq('menu_id',menuId);
+   const checks=[...document.querySelectorAll('.mog:checked')];
+   for(const c of checks){ await supabaseClient.from('menu_option_groups').insert({menu_id:menuId,group_id:Number(c.value)}); }
+}
+async function saveMenuOptions(menuId, optionIds){
+  // 1. ลบของเก่าก่อน
+  await supabaseClient.from("menu_options").delete().eq("menu_id", menuId);
+
+  // 2. ถ้าไม่มีตัวเลือก → จบ
+  if(!optionIds || optionIds.length === 0) return;
+
+  // 3. ใส่ใหม่
+  const rows = optionIds.map(id => ({
+    menu_id: menuId,
+    option_id: id
+  }));
+
+  const { error } = await supabaseClient.from("menu_options").insert(rows);
+  if(error) console.error("saveMenuOptions error", error);
+}
+function toggleOptGroup(el) {
+  const box = el.parentElement;
+  box.classList.toggle("active");
+}
+
+/* ---------------- Menu modal ---------------- */
+function openMenuModal(id=null){
+  editingMenuId = id;
+  document.getElementById("menuModal").style.display = "flex";
+
+  renderMenuOptionPanel(id);
+
+  if(id){
+    supabaseClient.from("menus").select("*").eq("id",id).single().then(({data,error})=>{
+      if(error){ console.error("openMenuModal fetch err", error); return; }
+      if(data){
+        document.getElementById("mName").value = data.name || "";
+        document.getElementById("mPrice").value = data.price || "";
+        document.getElementById("mCat").value = data.category || "";
+        document.getElementById("previewImg").src = data.image_url || "";
+      }
+    }).catch(e=>console.error(e));
+  } else {
+    document.getElementById("mName").value="";
+    document.getElementById("mPrice").value="";
+    document.getElementById("mCat").value="";
+    document.getElementById("mImage").value="";
+    document.getElementById("previewImg").src="";
+  }
+}
+
+function closeMenuModal(){ editingMenuId=null; document.getElementById("menuModal").style.display="none"; }
+
+async function uploadImage(file) {
+  if(!file) return "";
+  const timeStamp = Date.now();
+  const extension = file.name.split('.').pop();
+  const safeFileName = `img_${timeStamp}.${extension.toLowerCase()}`;
+  const filePath = `public/${safeFileName}`;
+  const { error } = await supabaseClient.storage
+    .from("menu-images")
+    .upload(filePath, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+  if (error) {
+    console.error("Upload error:", error);
+    throw error;
+  }
+  const { data } = supabaseClient.storage.from("menu-images").getPublicUrl(filePath);
+  return data.publicUrl;
+}
+
+function handleImagePreview(e){
+  const file = e.target.files?.[0];
+  if(!file) return;
+  const url = URL.createObjectURL(file);
+  document.getElementById("previewImg").src = url;
+}
+
+function getSelectedOptions(){
+  const arr = [];
+  document.querySelectorAll(".optCheck:checked").forEach(ch=>{
+    arr.push(Number(ch.value));
+  });
+  return arr;
+}
+
+async function saveMenu(){
+  const name = document.getElementById("mName").value.trim();
+  const price = Number(document.getElementById("mPrice").value);
+  const category = document.getElementById("mCat").value.trim();
+  const file = document.getElementById("mImage").files[0];
+
+  if(!name || isNaN(price)){ 
+    alert("กรุณากรอกชื่อและราคาที่ถูกต้อง"); 
+    return; 
+  }
+
+  let image_url = document.getElementById("previewImg").src || "";
+
+  try{
+    if(file) image_url = await uploadImage(file);
+  }catch(e){
+    alert("อัปโหลดรูปไม่สำเร็จ: " + (e.message||e)); 
+    return; 
+  }
+
+  let menuId;
+
+  if(editingMenuId){
+    const { error } = await supabaseClient
+      .from("menus")
+      .update({ name, price, category, image_url })
+      .eq("id", editingMenuId);
+
+    if(error){ alert("แก้ไขเมนูไม่สำเร็จ: " + error.message); return; }
+
+    menuId = editingMenuId;
+  } else {
+    const { data, error } = await supabaseClient
+      .from("menus")
+      .insert({ name, price, category, image_url, visible:true })
+      .select()
+      .single();
+
+    if(error){ alert("เพิ่มเมนูไม่สำเร็จ: " + error.message); return; }
+
+    menuId = data.id;
+  }
+
+  // 🔥 บันทึก option groups + options
+  const selectedOptions = getSelectedOptions();
+  await saveMenuOptionGroups(menuId);
+  await saveMenuOptions(menuId, selectedOptions);
+
+  alert("บันทึกเมนูเรียบร้อย!");
+  closeMenuModal();
+  loadMenus();
+}
+
+/* ---------------- Options modal ---------------- */
+function openOptModal(id=null){
+  editingOptId = id;
+  document.getElementById("optModal").style.display = "flex";
+
+  // reset inputs first
+  document.getElementById("oType").value = "";
+  document.getElementById("oName").value = "";
+  document.getElementById("oPrice").value = 0;
+
+  if(id){
+    supabaseClient.from("options").select("*").eq("id",id).single().then(({data,error})=>{
+      if(error){ console.error("openOptModal fetch err", error); return; }
+      if(data){
+        document.getElementById("oType").value = data.type || "";
+        document.getElementById("oName").value = data.name || "";
+        document.getElementById("oPrice").value = data.price || 0;
+      }
+    }).catch(e=>console.error(e));
+  }
+}
+
+async function saveOption(){
+  const type = document.getElementById("oType").value.trim();
+  const name = document.getElementById("oName").value.trim();
+  const price = Number(document.getElementById("oPrice").value);
+
+  if(!type || !name){
+    alert("กรุณากรอกข้อมูลให้ครบ");
+    return;
+  }
+
+  /* =========================
+     1️⃣ หา / สร้าง Option Group
+  ========================= */
+  let groupId = null;
+
+  // หา group จากชื่อ (type)
+  const { data: foundGroup, error: gErr } = await supabaseClient
+    .from("option_groups")
+    .select("id")
+    .eq("name", type)
+    .maybeSingle();
+
+  if(gErr){
+    alert("เกิดข้อผิดพลาดในการค้นหากลุ่ม");
+    return;
+  }
+
+  if(foundGroup){
+    groupId = foundGroup.id;
+  } else {
+    // ถ้าไม่มี → สร้างใหม่
+    const { data: newGroup, error: igErr } = await supabaseClient
+      .from("option_groups")
+      .insert({ name: type, visible: true })
+      .select()
+      .single();
+
+    if(igErr){
+      alert("สร้างกลุ่มไม่สำเร็จ");
+      return;
+    }
+
+    groupId = newGroup.id;
+  }
+
+  /* =========================
+     2️⃣ เพิ่ม / แก้ Option
+  ========================= */
+  if(editingOptId){
+    const { error } = await supabaseClient
+      .from("options")
+      .update({
+        type,
+        name,
+        price,
+        group_id: groupId
+      })
+      .eq("id", editingOptId);
+
+    if(error){
+      alert("แก้ไขไม่สำเร็จ: " + error.message);
+      return;
+    }
+
+    alert("แก้ไขตัวเลือกสำเร็จ");
+  } else {
+    const { error } = await supabaseClient
+      .from("options")
+      .insert({
+        type,
+        name,
+        price,
+        group_id: groupId,
+        visible: true
+      });
+
+    if(error){
+      alert("เพิ่มไม่สำเร็จ: " + error.message);
+      return;
+    }
+
+    alert("เพิ่มตัวเลือกสำเร็จ");
+  }
+
+  editingOptId = null;
+  closeOptModal();
+  loadOptions();          // ตารางตัวเลือก
+}
+
+function closeOptModal(){ editingOptId = null; document.getElementById("optModal").style.display = "none"; }
+
+/* ---------------- Common ---------------- */
+async function deleteItem(table,id){
+  if(!confirm("ต้องการลบข้อมูลนี้ใช่ไหม?")) return;
+  const { error } = await supabaseClient.from(table).delete().eq("id",id);
+  if(error){ alert("ลบไม่สำเร็จ: " + (error.message||JSON.stringify(error))); return; }
+
+  // clear & reload specific section after delete
+  if(table === "menus") {
+    await loadMenus();
+    return;
+  }
+  if(table === "options") {
+    await loadOptions();
+    return;
+  }
+  // otherwise refresh orders
+  await loadOrders();
+}
+
+
+async function toggleVisible(table,id,state){
+  const { error } = await supabaseClient.from(table).update({visible:state}).eq("id",id);
+  if(error) console.error("toggleVisible error", error);
+}
+
+function updatePageTitle(title) {
+  document.getElementById("pageTitle").innerText = title;
+}
+
+function logout(){
+  try { supabaseClient.auth.signOut(); } catch(e){}
+  window.location.href = "index.html";
+}
+
+/* ---------------- Dashboard: load data and aggregate ---------------- */
+
+let salesChart = null;
+
+/* --- แทนที่ renderSalesChart เดิม --- */
+function renderSalesChart(labels, data) {
+  try {
+    const canvas = document.getElementById("salesChart");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (salesChart) salesChart.destroy();
+
+    salesChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "ยอดขาย (บาท)",
+          data: data,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  } catch (err) {
+    console.error("renderSalesChart error:", err);
+  }
+}
+
+function applyRangeType(){
+  const type = document.getElementById('dashRangeType').value;
+  const fromEl = document.getElementById('dashFrom');
+  const toEl = document.getElementById('dashTo');
+
+  const now = new Date();
+  let from, to;
+
+  if(type === "today"){
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    to = new Date();
+  }
+  else if(type === "7days"){
+    to = new Date();
+    from = new Date();
+    from.setDate(from.getDate() - 6);
+  }
+  else if(type === "month"){
+    from = new Date(now.getFullYear(), now.getMonth(), 1);
+    to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  }
+  else if(type === "year"){
+    from = new Date(now.getFullYear(), 0, 1);
+    to = new Date(now.getFullYear(), 11, 31);
+  }
+  else {
+    return;
+  }
+
+  fromEl.value = from.toISOString().slice(0,10);
+  toEl.value = to.toISOString().slice(0,10);
+
+  loadDashboard();
+}
+
+/* --- แทนที่ loadDashboard เดิม --- */
+async function loadDashboard(){
+  try{
+    const from = document.getElementById('dashFrom').value;
+    const to = document.getElementById('dashTo').value;
+
+    if(!from || !to){ alert("เลือกวันที่ให้ครบ"); return; }
+
+    // ใช้ ISO boundaries เพื่อปลอดภัย
+    const fromISO = new Date(from + 'T00:00:00').toISOString();
+    const toISO = new Date(new Date(to + 'T23:59:59')).toISOString();
+
+    const { data: orders, error } = await supabaseClient
+      .from('orders')
+      .select('*')
+      .gte('created_at', fromISO)
+      .lte('created_at', toISO)
+      .order('created_at', { ascending: true });
+
+    if(error){ 
+      console.error("loadDashboard orders err", error); 
+      alert("ไม่สามารถโหลดข้อมูลออเดอร์ได้"); 
+      return; 
+    }
+
+    const ords = orders || [];
+
+    /* ---------------- aggregate (ใช้ ISO date keys เพื่อความเสถียร) ---------------- */
+    const salesByDay = {}; // key = YYYY-MM-DD (ISO date)
+    let totalSum = 0;
+    let todayTotal = 0;
+
+    const menuCount = {};
+    const houseCount = {};
+    const meatKeywords = ['หมู','ไก่','เนื้อ','ปลา','กุ้ง','กบ','เป็ด','ลูกชิ้น'];
+    const meatCount = {};
+
+    const todayKey = (new Date()).toISOString().slice(0,10); // YYYY-MM-DD
+
+    ords.forEach(o => {
+      try{
+        // แปลง created_at เป็น ISO date key (ปลอดภัยกว่าการใช้ toLocaleDateString)
+        const created = o.created_at ? new Date(o.created_at) : new Date();
+        const dKey = isNaN(created.getTime()) ? todayKey : created.toISOString().slice(0,10);
+
+        const total = Number(o.total) || 0;
+        salesByDay[dKey] = (salesByDay[dKey] || 0) + total;
+        totalSum += total;
+        if (dKey === todayKey) todayTotal += total;
+
+        let items = [];
+        try{ items = Array.isArray(o.items) ? o.items : JSON.parse(o.items || "[]"); }
+        catch(e){ items = []; }
+
+        items.forEach(it => {
+          const name = (it.food || '').trim();
+          const qty = Number(it.qty) || 1;
+
+          if (name) menuCount[name] = (menuCount[name] || 0) + qty;
+
+          const house = (o.house || '-').toString();
+          houseCount[house] = (houseCount[house] || 0) + qty;
+
+          for (const kw of meatKeywords) {
+            if (name.indexOf(kw) !== -1) {
+              meatCount[kw] = (meatCount[kw] || 0) + qty;
+            }
+          }
+        });
+      } catch(innerErr){
+        console.warn("Skipping an order in aggregation due to error:", innerErr);
+      }
+    });
+
+    /* --------- กราฟ -------- */
+    const labels = Object.keys(salesByDay).sort((a,b)=> new Date(a) - new Date(b));
+    const chartData = labels.map(l => salesByDay[l] || 0);
+
+    renderSalesChart(labels, chartData);
+
+    /* --------- ยอดขายวันนี้ -------- */
+    const todaySalesEl = document.getElementById("todaySales");
+    if (todaySalesEl) todaySalesEl.innerText = todayTotal.toLocaleString();
+
+    /* --------- 5 เมนูขายดีที่สุด -------- */
+    const topMenus = Object.entries(menuCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const topMenusTbody = document.querySelector('#topMenusTable tbody');
+
+    if (topMenusTbody) {
+      topMenusTbody.innerHTML = '';
+      topMenus.forEach(([name,count])=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="text-align:left">${name}</td>
+                        <td style="text-align:right">${count}</td>`;
+        topMenusTbody.appendChild(tr);
+      });
+
+      if (topMenus.length === 0) {
+        topMenusTbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#777;padding:12px;">ไม่มีข้อมูล</td></tr>`;
+      }
+    }
+
+    /* --------- บ้าน/โต๊ะ สั่งบ่อยสุด -------- */
+    const topHouse = Object.entries(houseCount).sort((a,b)=>b[1]-a[1])[0];
+    const topHouseEl = document.getElementById('topHouse');
+    if (topHouseEl) {
+      topHouseEl.innerText = topHouse ? `${topHouse[0]} (${topHouse[1]} ครั้ง)` : '-';
+    }
+
+    /* --------- เนื้อสัตว์ที่ใช้มากสุด -------- */
+    const topMeat = Object.entries(meatCount).sort((a,b)=>b[1]-a[1])[0];
+    const topMeatEl = document.getElementById('topMeat');
+    if (topMeatEl) {
+      topMeatEl.innerText = topMeat ? `${topMeat[0]} (${topMeat[1]})` : 'ไม่พบข้อมูลเฉพาะ';
+    }
+
+    /* --------- สรุปยอดรวม -------- */
+    const sumTotalEl = document.getElementById('sumTotal');
+    if (sumTotalEl) sumTotalEl.innerText = totalSum.toLocaleString();
+
+  } catch(e){
+    console.error("loadDashboard err", e);
+    alert("เกิดข้อผิดพลาดขณะโหลด dashboard");
+  }
+}
+
+/* --- เพิ่มการจับข้อผิดพลาดระดับ global เพื่อช่วยดีบั๊ก (ใส่ชั่วคราวได้) --- */
+window.onerror = function(message, source, lineno, colno, error) {
+  console.error("Global error:", message, "at", source + ":" + lineno + ":" + colno, error);
+  // ไม่ต้อง alert เสมอ — แต่ตอนดีบักเราจะแสดงข้อความสั้น ๆ
+  alert("เกิดข้อผิดพลาดในหน้า Admin (ดู console สำหรับรายละเอียด)");
+};
+
+/* --- แก้เล็กน้อยใน switchTab เพื่อ log --- */
+function switchTab(tab){
+  try {
+    document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+    const el = document.getElementById(tab);
+    if(el) el.classList.add("active");
+
+    // set active link
+    if(tab === 'dashboardSec') setActiveTab("tab-dashboard");
+    if(tab === 'orderSec') setActiveTab("tab-order");
+    if(tab === 'menuSec') setActiveTab("tab-menu");
+    if(tab === 'optSec') setActiveTab("tab-opt");
+    if(tab === 'settingsSec') setActiveTab("tab-settings");
+
+    // set page title
+    if(tab === 'dashboardSec') updatePageTitle("Dashboard");
+    if(tab === 'orderSec') updatePageTitle("รายการออเดอร์");
+    if(tab === 'menuSec') updatePageTitle("จัดการเมนู");
+    if(tab === 'optSec') updatePageTitle("ตัวเลือกสินค้า");
+    if(tab === 'settingsSec') updatePageTitle("ตั้งค่าร้าน");
+
+    // loaders
+    if(tab === 'orderSec'){ loadOrders().catch(e=>console.error(e)); }
+    if(tab === 'menuSec'){ loadMenus().catch(e=>console.error(e)); }
+    if(tab === 'optSec'){ loadOptions().catch(e=>console.error(e)); }
+    if(tab === 'dashboardSec'){
+      const to = new Date();
+      const from = new Date(to.getFullYear(), to.getMonth(), to.getDate()-6);
+      if(document.getElementById('dashFrom')) document.getElementById('dashFrom').value = from.toISOString().slice(0,10);
+      if(document.getElementById('dashTo')) document.getElementById('dashTo').value = to.toISOString().slice(0,10);
+      loadDashboard().catch(e=>console.error(e));
+    }
+    if(tab === 'settingsSec'){ loadStoreSettings().catch(e=>console.error(e)); }
+  } catch(err){
+    console.error("switchTab error:", err);
+  }
+}
+
+    async function initAdmin() {
+      try {
+        // UI
+        setActiveTab("tab-dashboard");
+        switchTab("dashboardSec");
+
+        // โหลดข้อมูลพื้นฐาน
+        await loadOptionMap();      // ⭐ ต้องมาก่อน
+        await loadMenus();
+        await loadOptions();
+
+        // โหลดออเดอร์ (หลัง optionMap พร้อมแล้ว)
+        await loadOrders();
+
+        // realtime + brand
+        subscribeRealtime();
+        await loadBrandUI();
+        await loadShopStatus();
+        bindShopSwitch();
+        bindShowAllOrdersSwitch();
+
+      } catch (e) {
+        console.error("initAdmin error:", e);
+      }
+    }
+
+  
+</script>
+</body>
+</html>
