@@ -696,16 +696,33 @@ function printOrder(orderId) {
   supabaseClient.from('orders').select('*').eq('id', orderId).single().then(({ data: o }) => {
     if (!o) return alert("ไม่พบข้อมูลออเดอร์");
 
-    const items = parseOrderItems(o.items); // ใช้ฟังก์ชันเดิมที่คุณมี
+    const items = parseOrderItems(o.items); 
     let itemsHtml = "";
+    
+    // ⭐ [อัปเดต] ดึงราคาตัวเลือกมาแสดงและบวกเงินให้ถูกต้อง
     items.forEach(it => {
-      let optTxt = it.options.map(opt => `+ ${opt.name}`).join(", ");
+      let optTotal = 0;
+      
+      // 1. ดึงชื่อตัวเลือกและราคาบวกเพิ่มมาต่อกัน
+      let optTxt = it.options.map(opt => {
+        optTotal += Number(opt.price || 0); // เก็บยอดรวมของตัวเลือก
+        return `- ${opt.name} ${opt.price > 0 ? `(+${opt.price})` : ""}`;
+      }).join("<br>"); // ใช้ <br> ตัดบรรทัดให้อ่านง่าย
+      
+      // 2. คำนวณราคารวม (ราคาอาหาร + ราคาตัวเลือกทั้งหมด) * จำนวนจาน
+      const itemTotal = (Number(it.price || 0) + optTotal) * it.qty;
+
       itemsHtml += `
-        <div class="receipt-item">
-          <div style="width: 70%;">${it.qty}x ${it.food} ${optTxt ? `<br><small>${optTxt}</small>` : ""}</div>
-          <div style="width: 30%; text-align: right;">${(it.price * it.qty).toLocaleString()}</div>
+        <div class="receipt-item" style="align-items: flex-start;">
+          <div style="width: 75%;">
+            <b>${it.qty}x ${it.food}</b>
+            ${optTxt ? `<div style="font-size: 13px; color: #444; margin-left: 15px; margin-top: 2px;">${optTxt}</div>` : ""}
+            ${it.note ? `<div style="font-size: 12px; font-style: italic; color: #555; margin-left: 15px; margin-top: 2px;">* ${it.note}</div>` : ""}
+          </div>
+          <div style="width: 25%; text-align: right; font-weight: bold;">
+            ${itemTotal.toLocaleString()}
+          </div>
         </div>
-        ${it.note ? `<div style="font-size:10px; font-style:italic;">* ${it.note}</div>` : ""}
       `;
     });
 
